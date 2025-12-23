@@ -199,10 +199,7 @@ export default function StaffUpload({ token, setToken }) {
 
         {/* Header like Student Lookup */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <h1 className="title" style={{ textAlign: "left" }}>
-  Staff Upload
-</h1>
-
+          <h1 className="title">Staff Upload</h1>
           {loggedIn && (
             <button className="btn btn-ghost" onClick={handleLogout}>
               Logout
