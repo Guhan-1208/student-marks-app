@@ -17,10 +17,10 @@ Built with **React**, **Flask**, **MongoDB**, and **Docker**.
   - Delete uploaded files
 - Role-based access (staff vs admin)
 - ### 📤 Staff Upload
-![Staff Upload](screenshots/staff-upload.png)
+![Staff Upload](student-marks-app/screenshots/staff-upload.png)
 
 ### 🗂️ Admin Panel
-![Admin Panel](screenshots/admin-uploads.png)
+![Admin Panel](student-marks-app/screenshots/staff-upload.png)
 
 
 ### 🎓 Students
@@ -29,7 +29,7 @@ Built with **React**, **Flask**, **MongoDB**, and **Docker**.
   - Date of Birth
 - View subject-wise marks instantly
 - ### 📊 Student Results
-![Student Results](screenshots/student-results.png)
+![Student Results](student-marks-app/screenshots/student-results.png)
 
 ### ⚙️ System
 - JWT authentication
