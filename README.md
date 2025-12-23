@@ -16,12 +16,20 @@ Built with **React**, **Flask**, **MongoDB**, and **Docker**.
   - View uploaded files
   - Delete uploaded files
 - Role-based access (staff vs admin)
+- ### 📤 Staff Upload
+![Staff Upload](screenshots/staff-upload.png)
+
+### 🗂️ Admin Panel
+![Admin Panel](screenshots/admin-uploads.png)
+
 
 ### 🎓 Students
 - Lookup marks using:
   - Register Number
   - Date of Birth
 - View subject-wise marks instantly
+- ### 📊 Student Results
+![Student Results](screenshots/student-results.png)
 
 ### ⚙️ System
 - JWT authentication
