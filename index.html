@@ -1,0 +1,518 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Student Marks Portal</title>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap"
+    rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+  <div class="bg-grid"></div>
+  <div class="bg-glow"></div>
+
+  <!-- NAV -->
+  <nav>
+    <div class="nav-inner">
+      <div class="brand">
+        <div class="brand-dot"></div>Marks Portal
+      </div>
+      <div class="nav-tabs">
+        <button class="nav-tab active" id="nav-lookup" onclick="showPage('lookup')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            style="width:14px;height:14px;display:inline;margin-right:5px;">
+            <circle cx="11" cy="11" r="8" />
+            <path d="m21 21-4.35-4.35" />
+          </svg>
+          Student Lookup
+        </button>
+        <button class="nav-tab" id="nav-staff" onclick="showPage('staff')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            style="width:14px;height:14px;display:inline;margin-right:5px;">
+            <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
+            <polyline points="17,8 12,3 7,8" />
+            <line x1="12" y1="3" x2="12" y2="15" />
+          </svg>
+          Staff Upload
+        </button>
+      </div>
+      <div class="nav-right" id="nav-right" style="display:none;">
+        <div class="user-chip">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;">
+            <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" />
+            <circle cx="12" cy="7" r="4" />
+          </svg>
+          <span id="nav-email"></span>
+          <span class="role-badge" id="nav-role-badge"></span>
+        </div>
+        <button class="btn btn-secondary" style="padding:7px 12px;font-size:13px;" onclick="doLogout()">Sign
+          out</button>
+      </div>
+    </div>
+  </nav>
+
+  <div class="app">
+
+    <!-- ══ STUDENT LOOKUP PAGE ══ -->
+    <div class="page active" id="page-lookup">
+      <div class="card card-sm">
+        <div class="card-title">Student Lookup</div>
+        <div class="card-sub">Enter your register number and date of birth to view your marks</div>
+
+        <div class="form-group">
+          <label class="form-label">Register Number</label>
+          <input class="form-input mono" id="reg-num" type="text" placeholder="e.g. 421622205001"
+            oninput="clearLookupResult()">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Date of Birth</label>
+          <input class="form-input mono" id="dob-input" type="text" placeholder="DD-MM-YYYY" inputmode="numeric"
+            oninput="handleDobInput(event)" onkeydown="if(event.key==='Enter')doLookup()">
+          <div class="dob-hint">Type digits — dashes added automatically</div>
+        </div>
+        <button class="btn btn-primary btn-full" id="lookup-btn" onclick="doLookup()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="11" cy="11" r="8" />
+            <path d="m21 21-4.35-4.35" />
+          </svg>
+          View Marks
+        </button>
+
+        <div id="lookup-error"></div>
+        <div id="lookup-loading" style="display:none;margin-top:14px;">
+          <div class="loading-bar"></div>
+        </div>
+        <div id="lookup-result" style="margin-top:20px;"></div>
+      </div>
+    </div>
+
+    <!-- ══ STAFF UPLOAD PAGE ══ -->
+    <div class="page" id="page-staff">
+
+      <!-- LOGIN PANEL -->
+      <div id="staff-login-panel" class="card card-sm">
+        <div class="card-title">Staff Login</div>
+        <div class="card-sub">Sign in to upload student marks</div>
+        <div class="form-group">
+          <label class="form-label">Email Address</label>
+          <input class="form-input" id="staff-email" type="email" placeholder="staff@college.edu"
+            onkeydown="if(event.key==='Enter')doStaffLogin()">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Password</label>
+          <input class="form-input" id="staff-password" type="password" placeholder="••••••••"
+            onkeydown="if(event.key==='Enter')doStaffLogin()">
+        </div>
+        <button class="btn btn-primary btn-full" id="login-btn" onclick="doStaffLogin()">Sign In</button>
+        <div id="login-error"></div>
+      </div>
+
+      <!-- UPLOAD PANEL (shown after login) -->
+      <div id="staff-upload-panel" style="display:none;">
+
+        <!-- STATS (admin only) -->
+        <div id="admin-stats" style="display:none;">
+          <div class="stats-row">
+            <div class="stat-card">
+              <div class="stat-label">Total Files</div>
+              <div class="stat-value blue" id="stat-files">0</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label">Total Students</div>
+              <div class="stat-value cyan" id="stat-students">—</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label">Total Marks</div>
+              <div class="stat-value purple" id="stat-marks">—</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="section-header">
+            <div>
+              <div class="card-title" style="margin-bottom:0;">Upload Marks</div>
+              <div class="card-sub" style="margin-bottom:0;">Excel (.xlsx/.xls) or CSV with columns: register_number,
+                subject_code, marks</div>
+            </div>
+          </div>
+
+          <div class="drop-zone" id="drop-zone" onclick="document.getElementById('marks-file').click()"
+            ondragover="handleDrag(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event)">
+            <input type="file" id="marks-file" accept=".xlsx,.xls,.csv" onchange="handleFileSelect(event)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <path
+                d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            <p>Click to browse or drag & drop file here</p>
+            <div class="file-chosen" id="chosen-file"></div>
+          </div>
+
+          <button class="btn btn-primary" style="margin-top:16px;" id="upload-btn" onclick="doUpload()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
+              <polyline points="17,8 12,3 7,8" />
+              <line x1="12" y1="3" x2="12" y2="15" />
+            </svg>
+            Upload Marks
+          </button>
+          <div id="upload-result"></div>
+        </div>
+
+        <!-- ADMIN: uploaded files -->
+        <div id="admin-files-section" style="display:none;margin-top:24px;">
+          <div class="section-header">
+            <div class="section-title">Uploaded Files</div>
+            <button class="btn btn-secondary" style="padding:7px 12px;font-size:13px;" onclick="fetchUploads()">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                style="width:13px;height:13px;">
+                <path d="M23 4v6h-6" />
+                <path d="M20.49 15a9 9 0 11-2.12-9.36L23 10" />
+              </svg>
+              Refresh
+            </button>
+          </div>
+          <div id="uploads-list"></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Mobile bottom nav -->
+  <div class="mobile-tabs">
+    <button class="mob-tab active" id="mob-lookup" onclick="showPage('lookup')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="11" cy="11" r="8" />
+        <path d="m21 21-4.35-4.35" />
+      </svg>
+      Lookup
+    </button>
+    <button class="mob-tab" id="mob-staff" onclick="showPage('staff')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
+        <polyline points="17,8 12,3 7,8" />
+        <line x1="12" y1="3" x2="12" y2="15" />
+      </svg>
+      Upload
+    </button>
+  </div>
+
+  <!-- Toast -->
+  <div class="toast" id="toast">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" id="toast-icon">
+      <polyline points="20,6 9,17 4,12" />
+    </svg>
+    <span id="toast-msg"></span>
+  </div>
+
+  <script>
+    // ── CONFIG ────────────────────────────────────────────────────
+    const API = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+      ? 'http://localhost:5000/api'
+      : 'https://YOUR-BACKEND.onrender.com/api'; // ← replace with your Render URL
+
+    // ── STATE ─────────────────────────────────────────────────────
+    let authToken = localStorage.getItem('marks_token') || '';
+    let authRole = '';
+    let authEmail = '';
+    let currentFile = null;
+
+    // ── INIT ──────────────────────────────────────────────────────
+    (function init() {
+      if (authToken) {
+        try {
+          const p = JSON.parse(atob(authToken.split('.')[1]));
+          if (p.exp * 1000 > Date.now()) {
+            authRole = p.role || '';
+            authEmail = p.email || '';
+            showLoggedIn();
+          } else {
+            localStorage.removeItem('marks_token');
+            authToken = '';
+          }
+        } catch { authToken = ''; }
+      }
+    })();
+
+    // ── PAGE ROUTING ──────────────────────────────────────────────
+    function showPage(name) {
+      document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+      document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.mob-tab').forEach(t => t.classList.remove('active'));
+      document.getElementById('page-' + name).classList.add('active');
+      document.getElementById('nav-' + name).classList.add('active');
+      document.getElementById('mob-' + name).classList.add('active');
+      if (name === 'staff' && authToken) fetchUploads();
+    }
+
+    // ── DOB FORMATTER ─────────────────────────────────────────────
+    function handleDobInput(e) {
+      const digits = e.target.value.replace(/\D/g, '').slice(0, 8);
+      let out = digits;
+      if (digits.length > 2) out = digits.slice(0, 2) + '-' + digits.slice(2);
+      if (digits.length > 4) out = digits.slice(0, 2) + '-' + digits.slice(2, 4) + '-' + digits.slice(4);
+      e.target.value = out;
+      clearLookupResult();
+    }
+
+    function isValidDob(s) {
+      if (!/^\d{2}-\d{2}-\d{4}$/.test(s)) return false;
+      const [dd, mm, yyyy] = s.split('-').map(Number);
+      return mm >= 1 && mm <= 12 && dd >= 1 && dd <= 31 && yyyy >= 1900 && yyyy <= new Date().getFullYear();
+    }
+
+    // ── STUDENT LOOKUP ────────────────────────────────────────────
+    function clearLookupResult() {
+      document.getElementById('lookup-result').innerHTML = '';
+      document.getElementById('lookup-error').innerHTML = '';
+    }
+
+    async function doLookup() {
+      const reg = document.getElementById('reg-num').value.trim();
+      const dob = document.getElementById('dob-input').value.trim();
+      const errEl = document.getElementById('lookup-error');
+      const resEl = document.getElementById('lookup-result');
+      const loadEl = document.getElementById('lookup-loading');
+      errEl.innerHTML = ''; resEl.innerHTML = '';
+
+      if (!reg || !dob) { errEl.innerHTML = alert_html('error', 'Please enter both Register Number and Date of Birth.'); return; }
+      if (!isValidDob(dob)) { errEl.innerHTML = alert_html('error', 'Date of birth must be in DD-MM-YYYY format.'); return; }
+
+      const [dd, mm, yyyy] = dob.split('-');
+      const isoDob = `${yyyy}-${mm}-${dd}`;
+
+      const btn = document.getElementById('lookup-btn');
+      btn.disabled = true;
+      loadEl.style.display = 'block';
+
+      try {
+        const res = await fetch(`${API}/students/lookup`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ register_number: reg, dob: isoDob })
+        });
+        const data = await res.json();
+        loadEl.style.display = 'none';
+
+        if (!res.ok) { errEl.innerHTML = alert_html('error', data.error || 'Invalid details.'); return; }
+
+        const marks = data.marks || [];
+        const name = data.student_name || '';
+
+        resEl.innerHTML = `
+      <div class="student-header">
+        <div class="student-name">${esc(name || 'Student')}</div>
+        <div class="student-reg">${esc(reg)}</div>
+      </div>
+      ${marks.length === 0
+            ? `<div class="empty"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg><p>No marks found for this student.</p></div>`
+            : `<div class="table-wrap" style="margin-top:0;">
+            <table>
+              <thead><tr><th>Subject Code</th><th>Marks</th><th>Uploaded By</th><th>Date</th></tr></thead>
+              <tbody>
+                ${marks.map(m => {
+              const v = parseFloat(m.marks);
+              const cls = v >= 75 ? 'marks-high' : v >= 50 ? 'marks-mid' : 'marks-low';
+              return `<tr>
+                    <td class="mono">${esc(m.subject_code || '-')}</td>
+                    <td><span class="marks-pill ${cls}">${v}</span></td>
+                    <td style="color:var(--muted);font-size:13px;">${esc(m.uploaded_by || '-')}</td>
+                    <td style="color:var(--muted);font-size:13px;">${m.uploaded_at ? new Date(m.uploaded_at).toLocaleDateString('en-IN') : '-'}</td>
+                  </tr>`;
+            }).join('')}
+              </tbody>
+            </table>
+          </div>`
+          }`;
+      } catch (e) {
+        loadEl.style.display = 'none';
+        errEl.innerHTML = alert_html('error', 'Network error. Please try again.');
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    // ── STAFF AUTH ────────────────────────────────────────────────
+    async function doStaffLogin() {
+      const email = document.getElementById('staff-email').value.trim().toLowerCase();
+      const pass = document.getElementById('staff-password').value;
+      const errEl = document.getElementById('login-error');
+      errEl.innerHTML = '';
+
+      if (!email || !pass) { errEl.innerHTML = alert_html('error', 'Email and password required.'); return; }
+
+      const btn = document.getElementById('login-btn');
+      btn.disabled = true; btn.innerHTML = '<div class="spinner"></div> Signing in…';
+
+      try {
+        const res = await fetch(`${API}/auth/login`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password: pass })
+        });
+        const data = await res.json();
+        if (!res.ok) { errEl.innerHTML = alert_html('error', data.error || 'Login failed.'); return; }
+
+        authToken = data.token;
+        localStorage.setItem('marks_token', authToken);
+        const p = JSON.parse(atob(authToken.split('.')[1]));
+        authRole = p.role || '';
+        authEmail = p.email || '';
+        document.getElementById('staff-password').value = '';
+        showLoggedIn();
+        fetchUploads();
+      } catch (e) {
+        errEl.innerHTML = alert_html('error', 'Network error.');
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = 'Sign In';
+      }
+    }
+
+    function showLoggedIn() {
+      document.getElementById('staff-login-panel').style.display = 'none';
+      document.getElementById('staff-upload-panel').style.display = 'block';
+      document.getElementById('nav-right').style.display = 'flex';
+      document.getElementById('nav-email').textContent = authEmail;
+      const badge = document.getElementById('nav-role-badge');
+      badge.textContent = authRole;
+      badge.className = `role-badge ${authRole}`;
+      if (authRole === 'admin') {
+        document.getElementById('admin-stats').style.display = 'block';
+        document.getElementById('admin-files-section').style.display = 'block';
+      }
+    }
+
+    function doLogout() {
+      localStorage.removeItem('marks_token');
+      authToken = ''; authRole = ''; authEmail = '';
+      document.getElementById('staff-login-panel').style.display = 'block';
+      document.getElementById('staff-upload-panel').style.display = 'none';
+      document.getElementById('nav-right').style.display = 'none';
+      document.getElementById('staff-email').value = '';
+      document.getElementById('upload-result').innerHTML = '';
+      document.getElementById('uploads-list').innerHTML = '';
+      showToast('Signed out', 'success');
+    }
+
+    // ── FILE HANDLING ─────────────────────────────────────────────
+    function handleFileSelect(e) { setFile(e.target.files[0]); }
+    function handleDrag(e) { e.preventDefault(); document.getElementById('drop-zone').classList.add('dragover'); }
+    function handleDragLeave() { document.getElementById('drop-zone').classList.remove('dragover'); }
+    function handleDrop(e) {
+      e.preventDefault(); document.getElementById('drop-zone').classList.remove('dragover');
+      const f = e.dataTransfer.files[0];
+      if (f) setFile(f); else showToast('Please drop an Excel or CSV file', 'error');
+    }
+    function setFile(f) {
+      currentFile = f;
+      document.getElementById('chosen-file').textContent = `${f.name} (${(f.size / 1024).toFixed(1)} KB)`;
+    }
+
+    // ── UPLOAD ────────────────────────────────────────────────────
+    async function doUpload() {
+      const resEl = document.getElementById('upload-result');
+      resEl.innerHTML = '';
+      if (!currentFile) { resEl.innerHTML = alert_html('error', 'Please select a file first.'); return; }
+
+      const btn = document.getElementById('upload-btn');
+      btn.disabled = true;
+      btn.innerHTML = '<div class="spinner"></div> Uploading…';
+
+      const form = new FormData();
+      form.append('file', currentFile);
+
+      try {
+        const res = await fetch(`${API}/upload-marks`, {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${authToken}` },
+          body: form
+        });
+        const data = await res.json();
+        if (!res.ok) { resEl.innerHTML = alert_html('error', data.error || 'Upload failed.'); return; }
+        resEl.innerHTML = alert_html('success', `✓ Successfully processed ${data.processed} mark records.`);
+        currentFile = null;
+        document.getElementById('chosen-file').textContent = '';
+        document.getElementById('marks-file').value = '';
+        if (authRole === 'admin') fetchUploads();
+        showToast(`${data.processed} records uploaded`, 'success');
+      } catch (e) {
+        resEl.innerHTML = alert_html('error', 'Network error during upload.');
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:15px;height:15px;"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17,8 12,3 7,8"/><line x1="12" y1="3" x2="12" y2="15"/></svg> Upload Marks';
+      }
+    }
+
+    // ── ADMIN UPLOADS ─────────────────────────────────────────────
+    async function fetchUploads() {
+      if (authRole !== 'admin') return;
+      const el = document.getElementById('uploads-list');
+      el.innerHTML = '<div style="color:var(--muted);font-size:14px;padding:12px 0;">Loading…</div>';
+      try {
+        const res = await fetch(`${API}/admin/uploads`, { headers: { Authorization: `Bearer ${authToken}` } });
+        const data = await res.json();
+        if (!res.ok) { el.innerHTML = alert_html('error', data.error || 'Failed to load'); return; }
+        const files = data.uploads || [];
+        document.getElementById('stat-files').textContent = files.length;
+        if (!files.length) {
+          el.innerHTML = '<div class="empty"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg><p>No files uploaded yet.</p></div>';
+          return;
+        }
+        el.innerHTML = files.map(f => `
+      <div class="file-card">
+        <div>
+          <div class="file-name">${esc(f.name)}</div>
+          <div class="file-meta">${fmtBytes(f.size_bytes)} · Modified ${new Date(f.modified_at * 1000).toLocaleString('en-IN')}</div>
+        </div>
+        <button class="btn btn-danger" style="padding:6px 12px;font-size:12px;" onclick="deleteFile('${esc(f.name)}')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;"><polyline points="3,6 5,6 21,6"/><path d="M19,6l-1,14a2,2,0,0,1-2,2H8a2,2,0,0,1-2-2L5,6"/></svg>
+          Delete
+        </button>
+      </div>`).join('');
+      } catch (e) {
+        el.innerHTML = alert_html('error', 'Network error.');
+      }
+    }
+
+    async function deleteFile(name) {
+      if (!confirm(`Delete "${name}" and all associated marks?`)) return;
+      try {
+        const res = await fetch(`${API}/admin/uploads`, {
+          method: 'DELETE',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${authToken}` },
+          body: JSON.stringify({ filename: name })
+        });
+        const data = await res.json();
+        if (!res.ok) { showToast(data.error || 'Delete failed', 'error'); return; }
+        showToast('File and marks deleted', 'success');
+        fetchUploads();
+      } catch (e) { showToast('Network error', 'error'); }
+    }
+
+    // ── UTILS ─────────────────────────────────────────────────────
+    function esc(s) { return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+    function fmtBytes(b) { if (!b) return '0 B'; const u = ['B', 'KB', 'MB', 'GB']; let i = 0, n = b; while (n >= 1024 && i < u.length - 1) { n /= 1024; i++; } return `${n.toFixed(1)} ${u[i]}`; }
+    function alert_html(type, msg) {
+      const icons = { error: '<line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>', success: '<polyline points="20,6 9,17 4,12"/>', info: '<circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>' };
+      return `<div class="alert alert-${type}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:15px;height:15px;flex-shrink:0;margin-top:1px;">${icons[type] || icons.info}</svg><span>${esc(msg)}</span></div>`;
+    }
+    function showToast(msg, type = 'success') {
+      const t = document.getElementById('toast');
+      const icon = document.getElementById('toast-icon');
+      document.getElementById('toast-msg').textContent = msg;
+      t.className = `toast ${type}`;
+      icon.innerHTML = type === 'success' ? '<polyline points="20,6 9,17 4,12"/>' : '<line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>';
+      t.classList.add('show');
+      setTimeout(() => t.classList.remove('show'), 3000);
+    }
+  </script>
+</body>
+
+</html>
