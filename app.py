@@ -18,7 +18,8 @@ JWT_SECRET = os.environ.get("JWT_SECRET")
 if not JWT_SECRET:
     raise RuntimeError("JWT_SECRET environment variable must be set")
 
-MONGO_URI = os.environ.get("MONGO_URI", "mongodb://mongo:27017/student_marks_db")
+MONGO_URI = os.environ.get("MONGO_URI", "mongodb://localhost:27017/student_marks_db")
+DB_NAME   = os.environ.get("DB_NAME", "student_marks_db")
 UPLOAD_DIR = os.environ.get("UPLOAD_DIR", "uploads")
 MAX_UPLOAD_MB = int(os.environ.get("MAX_UPLOAD_MB", "10"))
 JWT_EXP_HOURS = int(os.environ.get("JWT_EXP_HOURS", "6"))
@@ -30,27 +31,35 @@ os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 app = Flask(__name__)
 app.config["MAX_CONTENT_LENGTH"] = MAX_UPLOAD_MB * 1024 * 1024
-CORS(app, origins=CORS_ORIGINS or None)
+CORS(app, origins=CORS_ORIGINS or "*")
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("student-marks-api")
 
 # ================= DB =================
 
-client = MongoClient(MONGO_URI)
-db = client.get_default_database()
+try:
+    client = MongoClient(MONGO_URI, serverSelectionTimeoutMS=10000)
+    db = client[DB_NAME]
+    logger.info(f"Connected to MongoDB: {DB_NAME}")
+except Exception as e:
+    logger.error(f"MongoDB connection error: {e}")
+    raise
 
 students_col = db.students
 marks_col = db.marks
 staff_col = db.staff
 uploads_col = db.uploads
 
-students_col.create_index([("register_number", ASCENDING)], unique=True)
-staff_col.create_index([("email", ASCENDING)], unique=True)
-marks_col.create_index(
-    [("register_number", ASCENDING), ("subject_code", ASCENDING)],
-    unique=True
-)
+try:
+    students_col.create_index([("register_number", ASCENDING)], unique=True)
+    staff_col.create_index([("email", ASCENDING)], unique=True)
+    marks_col.create_index(
+        [("register_number", ASCENDING), ("subject_code", ASCENDING)],
+        unique=True
+    )
+except Exception as e:
+    logger.warning(f"Index creation warning: {e}")
 
 # ================= HELPERS =================
 
@@ -139,9 +148,11 @@ def upload_marks():
 
     try:
         if filename.lower().endswith(".csv"):
-            df = pd.read_csv(path)
+            df = pd.read_csv(path, dtype=str, keep_default_na=False)
         else:
-            df = pd.read_excel(path)
+            df = pd.read_excel(path, dtype=str, keep_default_na=False, engine="openpyxl")
+        df = df.copy()
+        import gc; gc.collect()
     except Exception:
         logger.exception("Failed reading file")
         return jsonify({"error": "Invalid spreadsheet"}), 400
@@ -151,52 +162,71 @@ def upload_marks():
     if not required.issubset(set(df.columns)):
         return jsonify({"error": "Missing required columns"}), 400
 
-    inserted = 0
+    from pymongo import UpdateOne
+
+    student_ops = []
+    marks_ops = []
+    now = datetime.datetime.utcnow()
+
     for _, row in df.iterrows():
-        reg = str(row.get("register_number", "")).strip()
+        reg     = str(row.get("register_number", "")).strip()
         subject = str(row.get("subject_code", "")).strip()
-        marks_val = row.get("marks")
+        marks_val = row.get("marks", "")
 
-        if not reg or not subject or pd.isna(marks_val):
+        if not reg or not subject or marks_val == "" or marks_val is None:
             continue
-
-        student_name = str(row.get("student_name")).strip() if "student_name" in row and not pd.isna(row.get("student_name")) else None
-        dob = None
-        if "dob" in row and not pd.isna(row.get("dob")):
-            dob = pd.to_datetime(row.get("dob")).date().isoformat()
-
-        # Prepare student update
-        student_update = {
-            "$set": {"student_name": student_name} if student_name else {},
-            "$setOnInsert": {
-                "register_number": reg,
-                "created_at": datetime.datetime.utcnow()
-            }
-        }
-        if dob:
-            student_update["$setOnInsert"]["dob_hash"] = hash_text(dob)
-
-        students_col.update_one({"register_number": reg}, student_update, upsert=True)
-
         try:
-            marks_col.update_one(
-                {"register_number": reg, "subject_code": subject},
-                {"$set": {
-                    "marks": float(marks_val),
-                    "uploaded_by": request.user["email"],
-                    "uploaded_at": datetime.datetime.utcnow(),
-                    "source_file": filename   # ✅ track source file
-                }},
-                upsert=True
-            )
-            inserted += 1
-        except DuplicateKeyError:
+            marks_val = float(marks_val)
+        except (ValueError, TypeError):
             continue
+
+        student_name = row.get("student_name", "").strip() or None
+        dob = None
+        raw_dob = row.get("dob", "").strip()
+        if raw_dob:
+            try:
+                dob = pd.to_datetime(raw_dob).date().isoformat()
+            except Exception:
+                dob = None
+
+        set_fields = {}
+        if student_name:
+            set_fields["student_name"] = student_name
+
+        set_on_insert = {"register_number": reg, "created_at": now}
+        if dob:
+            set_on_insert["dob_hash"] = hash_text(dob)
+
+        student_ops.append(UpdateOne(
+            {"register_number": reg},
+            {"$set": set_fields, "$setOnInsert": set_on_insert},
+            upsert=True
+        ))
+
+        marks_ops.append(UpdateOne(
+            {"register_number": reg, "subject_code": subject},
+            {"$set": {
+                "marks": marks_val,
+                "uploaded_by": request.user["email"],
+                "uploaded_at": now,
+                "source_file": filename
+            }},
+            upsert=True
+        ))
+
+    if not marks_ops:
+        return jsonify({"error": "No valid rows found in file"}), 400
+
+    # Single bulk write for students, single bulk write for marks
+    if student_ops:
+        students_col.bulk_write(student_ops, ordered=False)
+    result = marks_col.bulk_write(marks_ops, ordered=False)
+    inserted = result.upserted_count + result.modified_count
 
     uploads_col.insert_one({
         "filename": filename,
         "uploaded_by": request.user["email"],
-        "uploaded_at": datetime.datetime.utcnow()
+        "uploaded_at": now
     })
 
     return jsonify({"status": "success", "processed": inserted})
