@@ -1,0 +1,10 @@
+flask
+flask-cors
+pymongo[srv]
+pandas
+openpyxl
+bcrypt
+PyJWT
+Werkzeug
+gunicorn
+dnspython
