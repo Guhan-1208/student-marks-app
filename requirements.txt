@@ -1,6 +1,6 @@
 flask
 flask-cors
-pymongo[srv]
+pymongo==4.6.3
 pandas
 openpyxl
 bcrypt
